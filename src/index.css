@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, ui-serif, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-brand-bg: #0A0B0E;
+  --color-brand-surface: #121418;
+  --color-brand-surface-low: #1A1D24;
+  --color-brand-surface-high: rgba(255, 255, 255, 0.08);
+  --color-brand-surface-highest: rgba(255, 255, 255, 0.15);
+  --color-brand-red: #FF2E2E;
+  --color-brand-red-dim: rgba(255, 46, 46, 0.1);
+  --color-brand-red-dark: #C21A1A;
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom darker scrollbar matching design specifications */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0B0E;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF2E2E;
+}
+

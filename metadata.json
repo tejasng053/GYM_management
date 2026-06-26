@@ -1,0 +1,6 @@
+{
+  "name": "IronPulse",
+  "description": "Elite gym performance tracker, attendance analytics, member training split & diet planner, trainer roster, and financial dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
