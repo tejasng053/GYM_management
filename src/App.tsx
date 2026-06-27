@@ -32,6 +32,13 @@ import InventoryView from './components/InventoryView';
 import ReportsView from './components/ReportsView';
 
 import { Member, Trainer, FinanceStats, InventoryItem, Notification } from './types';
+import { 
+  INITIAL_MEMBERS, 
+  INITIAL_TRAINERS, 
+  INITIAL_FINANCE,
+  INITIAL_INVENTORY,
+  INITIAL_NOTIFICATIONS
+} from './data';
 
 export default function App() {
   // Authentication & role context states
@@ -42,13 +49,13 @@ export default function App() {
   // Tab control state
   const [activeTab, setActiveTab] = useState<string>('attendance');
 
-  const [members, setMembers] = useState<Member[]>([]);
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [finance, setFinance] = useState<FinanceStats | null>(null);
+  const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
+  const [trainers, setTrainers] = useState<Trainer[]>(INITIAL_TRAINERS);
+  const [finance, setFinance] = useState<FinanceStats>(INITIAL_FINANCE);
   const [liveOccupancy, setLiveOccupancy] = useState<number>(54);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
+  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(INITIAL_MEMBERS[0] || null);
 
   // Fetch initial data from backend API
   useEffect(() => {
@@ -68,17 +75,17 @@ export default function App() {
         const inventoryData: InventoryItem[] = await inventoryRes.json();
         const notificationsData: Notification[] = await notificationsRes.json();
 
-        setMembers(membersData);
-        setTrainers(trainersData);
-        setFinance(financeData);
-        setInventory(inventoryData);
-        setNotifications(notificationsData);
-
+        if (membersData.length > 0) setMembers(membersData);
+        if (trainersData.length > 0) setTrainers(trainersData);
+        if (financeData) setFinance(financeData);
+        if (inventoryData.length > 0) setInventory(inventoryData);
+        if (notificationsData.length > 0) setNotifications(notificationsData);
+ 
         if (membersData.length > 0) {
           setSelectedMember(membersData[0]);
         }
       } catch (error) {
-        console.error('Failed to fetch initial data:', error);
+        console.warn('Backend API offline. Using local simulation fallback data.', error);
       } finally {
         setLoading(false);
       }
