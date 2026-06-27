@@ -3,6 +3,23 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import cors from "cors";
+import connectDB from "./src/config/db";
+
+import memberRoutes from "./src/routes/memberRoutes";
+import trainerRoutes from "./src/routes/trainerRoutes";
+import financeRoutes from "./src/routes/financeRoutes";
+import inventoryRoutes from "./src/routes/inventoryRoutes";
+import notificationRoutes from "./src/routes/notificationRoutes";
+import { 
+  INITIAL_MEMBERS, INITIAL_TRAINERS, INITIAL_FINANCE, 
+  INITIAL_INVENTORY, INITIAL_NOTIFICATIONS 
+} from "./src/data";
+import Member from "./src/models/Member";
+import Trainer from "./src/models/Trainer";
+import Finance from "./src/models/Finance";
+import Inventory from "./src/models/Inventory";
+import Notification from "./src/models/Notification";
 
 dotenv.config();
 
@@ -10,7 +27,37 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Connect to MongoDB Database
+  await connectDB();
+
+  app.use(cors());
   app.use(express.json());
+
+  // Register API Routes
+  app.use('/api/members', memberRoutes);
+  app.use('/api/trainers', trainerRoutes);
+  app.use('/api/finance', financeRoutes);
+  app.use('/api/inventory', inventoryRoutes);
+  app.use('/api/notifications', notificationRoutes);
+
+  // Seed route to reset database with initial data
+  app.post('/api/seed', async (req, res) => {
+    try {
+      await Member.deleteMany({});
+      await Trainer.deleteMany({});
+      await Finance.deleteMany({});
+      await Inventory.deleteMany({});
+      await Notification.deleteMany({});
+      await Member.insertMany(INITIAL_MEMBERS);
+      await Trainer.insertMany(INITIAL_TRAINERS);
+      await Finance.create(INITIAL_FINANCE);
+      await Inventory.insertMany(INITIAL_INVENTORY);
+      await Notification.insertMany(INITIAL_NOTIFICATIONS);
+      res.json({ message: 'Database seeded successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to seed database' });
+    }
+  });
 
   // API Route: AI Operational Suggestions & Schemes
   app.post("/api/improve-tips", async (req, res) => {

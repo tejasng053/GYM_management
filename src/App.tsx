@@ -32,57 +32,60 @@ import InventoryView from './components/InventoryView';
 import ReportsView from './components/ReportsView';
 
 import { Member, Trainer, FinanceStats, InventoryItem, Notification } from './types';
-import { 
-  INITIAL_MEMBERS, 
-  INITIAL_TRAINERS, 
-  INITIAL_FINANCE,
-  INITIAL_INVENTORY,
-  INITIAL_NOTIFICATIONS
-} from './data';
 
 export default function App() {
   // Authentication & role context states
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<'owner' | 'trainer' | 'member'>('trainer');
+  const [loading, setLoading] = useState<boolean>(true);
   
   // Tab control state
-  const [activeTab, setActiveTab] = useState<string>('attendance'); // Defaults to the attendance analytics page as requested
+  const [activeTab, setActiveTab] = useState<string>('attendance');
 
-  // Load state from localStorage if present
-  const [members, setMembers] = useState<Member[]>(() => {
-    const saved = localStorage.getItem('ironpulse_members');
-    return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
-  });
+  const [members, setMembers] = useState<Member[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [finance, setFinance] = useState<FinanceStats | null>(null);
+  const [liveOccupancy, setLiveOccupancy] = useState<number>(54);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
-  const [trainers, setTrainers] = useState<Trainer[]>(() => {
-    const saved = localStorage.getItem('ironpulse_trainers');
-    return saved ? JSON.parse(saved) : INITIAL_TRAINERS;
-  });
+  // Fetch initial data from backend API
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        const [membersRes, trainersRes, financeRes, inventoryRes, notificationsRes] = await Promise.all([
+          fetch('/api/members'),
+          fetch('/api/trainers'),
+          fetch('/api/finance'),
+          fetch('/api/inventory'),
+          fetch('/api/notifications'),
+        ]);
 
-  const [finance, setFinance] = useState<FinanceStats>(() => {
-    const saved = localStorage.getItem('ironpulse_finance');
-    return saved ? JSON.parse(saved) : INITIAL_FINANCE;
-  });
+        const membersData: Member[] = await membersRes.json();
+        const trainersData: Trainer[] = await trainersRes.json();
+        const financeData: FinanceStats = await financeRes.json();
+        const inventoryData: InventoryItem[] = await inventoryRes.json();
+        const notificationsData: Notification[] = await notificationsRes.json();
 
-  const [liveOccupancy, setLiveOccupancy] = useState<number>(() => {
-    const saved = localStorage.getItem('ironpulse_occupancy');
-    return saved ? parseInt(saved, 10) : 54;
-  });
+        setMembers(membersData);
+        setTrainers(trainersData);
+        setFinance(financeData);
+        setInventory(inventoryData);
+        setNotifications(notificationsData);
 
-  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    const saved = localStorage.getItem('ironpulse_inventory');
-    return saved ? JSON.parse(saved) : INITIAL_INVENTORY;
-  });
+        if (membersData.length > 0) {
+          setSelectedMember(membersData[0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const saved = localStorage.getItem('ironpulse_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-  });
-
-  // Selected Member state (for detailed Workout/Diet editing)
-  const [selectedMember, setSelectedMember] = useState<Member>(() => {
-    return members[0] || INITIAL_MEMBERS[0];
-  });
+    fetchInitialData();
+  }, []);
 
   // Global search input query
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -107,62 +110,52 @@ export default function App() {
   const [outreachMailSubject, setOutreachMailSubject] = useState<string>('');
   const [outreachMailBody, setOutreachMailBody] = useState<string>('');
 
-  // Save states to localStorage whenever modified
-  useEffect(() => {
-    localStorage.setItem('ironpulse_members', JSON.stringify(members));
-  }, [members]);
-
-  useEffect(() => {
-    localStorage.setItem('ironpulse_trainers', JSON.stringify(trainers));
-  }, [trainers]);
-
-  useEffect(() => {
-    localStorage.setItem('ironpulse_finance', JSON.stringify(finance));
-  }, [finance]);
-
-  useEffect(() => {
-    localStorage.setItem('ironpulse_occupancy', liveOccupancy.toString());
-  }, [liveOccupancy]);
-
-  useEffect(() => {
-    localStorage.setItem('ironpulse_inventory', JSON.stringify(inventory));
-  }, [inventory]);
-
-  useEffect(() => {
-    localStorage.setItem('ironpulse_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
   // Synchronize selected member if members list is updated
   useEffect(() => {
-    const found = members.find(m => m.id === selectedMember.id);
-    if (found) {
-      setSelectedMember(found);
+    if (selectedMember) {
+      const found = members.find(m => m.id === selectedMember.id);
+      if (found) {
+        setSelectedMember(found);
+      } else if (members.length > 0) {
+        setSelectedMember(members[0]);
+      }
+    } else if (members.length > 0) {
+      setSelectedMember(members[0]);
     }
   }, [members]);
 
   // Restores factories
-  const handleResetData = () => {
-    setMembers(INITIAL_MEMBERS);
-    setTrainers(INITIAL_TRAINERS);
-    setFinance(INITIAL_FINANCE);
-    setLiveOccupancy(54);
-    setSelectedMember(INITIAL_MEMBERS[0]);
-    setInventory(INITIAL_INVENTORY);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    localStorage.clear();
+  const handleResetData = async () => {
+    try {
+      await fetch('/api/seed', { method: 'POST' });
+      const [membersRes, trainersRes, financeRes, inventoryRes, notificationsRes] = await Promise.all([
+        fetch('/api/members'),
+        fetch('/api/trainers'),
+        fetch('/api/finance'),
+        fetch('/api/inventory'),
+        fetch('/api/notifications'),
+      ]);
+      setMembers(await membersRes.json());
+      setTrainers(await trainersRes.json());
+      setFinance(await financeRes.json());
+      setInventory(await inventoryRes.json());
+      setNotifications(await notificationsRes.json());
+      setLiveOccupancy(54);
+      setSelectedMember(members[0] || null);
+    } catch (error) {
+      console.error('Failed to reset data:', error);
+    }
   };
 
   // Add Member Submission handler
-  const handleAddMemberSubmit = (e: React.FormEvent) => {
+  const handleAddMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberName.trim()) return;
 
     const weightVal = parseFloat(newMemberWeight) || 180;
-    const newId = `#IP-${Math.floor(1000 + Math.random() * 9000)}`;
     const avatarInitials = newMemberName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-    const newMember: Member = {
-      id: newId,
+    const newMember: Omit<Member, 'id'> = {
       name: newMemberName,
       avatar: avatarInitials,
       status: 'Active',
@@ -193,40 +186,54 @@ export default function App() {
       streakDays: 0
     };
 
-    setMembers([newMember, ...members]);
-    setSelectedMember(newMember);
+    try {
+      const res = await fetch('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMember),
+      });
+      if (res.ok) {
+        const created: Member = await res.json();
+        setMembers([created, ...members]);
+        setSelectedMember(created);
+      }
+    } catch (error) {
+      console.error('Failed to create member:', error);
+    }
+
     setShowAddMember(false);
     setNewMemberName('');
-    setActiveTab('members'); // Take them directly to check out their new profile!
+    setActiveTab('members');
   };
 
   // Perform member check-in simulation
-  const handleCheckInMember = (idOrName: string) => {
+  const handleCheckInMember = async (idOrName: string) => {
     if (!idOrName.trim()) return;
 
-    // Search by ID or Name
-    const foundIdx = members.findIndex(m => 
-      m.id.toLowerCase() === idOrName.toLowerCase() ||
-      m.name.toLowerCase().includes(idOrName.toLowerCase())
-    );
+    try {
+      const res = await fetch('/api/members/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: idOrName }),
+      });
 
-    if (foundIdx !== -1) {
-      const updatedMembers = [...members];
-      const member = updatedMembers[foundIdx];
-      
-      // Update check-in values
-      member.absentDays = 0;
-      setMembers(updatedMembers);
-      setLiveOccupancy(prev => prev + 1);
-      
-      // Register temporary welcome notification
-      setCheckInMessage(`✓ Check-in successful: Welcome back to Iron Haven, ${member.name}!`);
-      setTimeout(() => setCheckInMessage(''), 4000);
-      setCheckInInput('');
-      setShowCheckInForm(false);
-    } else {
-      alert(`Access Key or Athlete Name "${idOrName}" could not be located in our active member files. For manual guest passes, use Guest-Portal.`);
+      if (res.ok) {
+        const updatedMember: Member = await res.json();
+        setMembers(members.map(m => m.id === updatedMember.id ? updatedMember : m));
+        setLiveOccupancy(prev => prev + 1);
+        setCheckInMessage(`✓ Check-in successful: Welcome back to Iron Haven, ${updatedMember.name}!`);
+        setTimeout(() => setCheckInMessage(''), 4000);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Member not found');
+      }
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      alert('Check-in failed. Please try again.');
     }
+
+    setCheckInInput('');
+    setShowCheckInForm(false);
   };
 
   // Trigger outreach dispatch preview dialog
@@ -246,32 +253,87 @@ export default function App() {
   };
 
   // Update a single member's plan
-  const handleUpdateMember = (updatedMember: Member) => {
-    const updatedMembers = members.map((m) => m.id === updatedMember.id ? updatedMember : m);
-    setMembers(updatedMembers);
+  const handleUpdateMember = async (updatedMember: Member) => {
+    try {
+      const res = await fetch(`/api/members/${updatedMember.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMember),
+      });
+      if (res.ok) {
+        setMembers(members.map((m) => m.id === updatedMember.id ? updatedMember : m));
+      }
+    } catch (error) {
+      console.error('Failed to update member:', error);
+    }
   };
 
   // Update trainer roster list
-  const handleUpdateTrainers = (updatedTrainers: Trainer[]) => {
-    setTrainers(updatedTrainers);
+  const handleUpdateTrainers = async (updatedTrainers: Trainer[]) => {
+    try {
+      const res = await fetch('/api/trainers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTrainers),
+      });
+      if (res.ok) {
+        setTrainers(updatedTrainers);
+      }
+    } catch (error) {
+      console.error('Failed to update trainers:', error);
+    }
   };
 
   // Clear pending payroll and add value to expenses to adjust profits
-  const handleUpdatePayroll = (amount: number) => {
-    const updatedFinance = { ...finance };
-    // Deduct from profit or keep profit and just update payroll tracking
-    const salariesExpenseIndex = updatedFinance.expenses.findIndex(ex => ex.category === 'Salaries');
-    if (salariesExpenseIndex !== -1) {
-      updatedFinance.expenses[salariesExpenseIndex].amount += amount;
+  const handleUpdatePayroll = async (amount: number) => {
+    if (!finance) return;
+    try {
+      const updatedFinance = { ...finance };
+      const salariesExpenseIndex = updatedFinance.expenses.findIndex(ex => ex.category === 'Salaries');
+      if (salariesExpenseIndex !== -1) {
+        updatedFinance.expenses[salariesExpenseIndex].amount += amount;
+      }
+      updatedFinance.monthlyProfit -= amount;
+
+      const res = await fetch('/api/finance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFinance),
+      });
+      if (res.ok) {
+        setFinance(updatedFinance);
+      }
+    } catch (error) {
+      console.error('Failed to update payroll:', error);
     }
-    updatedFinance.monthlyProfit -= amount;
-    setFinance(updatedFinance);
   };
 
   // Directly update finance statistics
-  const handleUpdateFinance = (updatedFinance: FinanceStats) => {
-    setFinance(updatedFinance);
+  const handleUpdateFinance = async (updatedFinance: FinanceStats) => {
+    try {
+      const res = await fetch('/api/finance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFinance),
+      });
+      if (res.ok) {
+        setFinance(updatedFinance);
+      }
+    } catch (error) {
+      console.error('Failed to update finance:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-brand-bg text-white min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-brand-red mx-auto" />
+          <p className="text-sm text-zinc-400 font-mono">Loading Iron Haven...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -307,7 +369,7 @@ export default function App() {
         onAddMemberClick={() => setShowAddMember(true)}
         userRole={userRole}
         onLogout={() => setIsLoggedIn(false)}
-        selectedMemberName={selectedMember?.name || 'Tejas Gowda'}
+        selectedMemberName={selectedMember?.name || 'Iron Haven'}
       />
       
       {/* Main Container Workspace */}
@@ -329,7 +391,7 @@ export default function App() {
           }}
           activeTab={activeTab}
           userRole={userRole}
-          selectedMember={selectedMember}
+          selectedMember={selectedMember || members[0]}
           onCheckInMember={(id) => handleCheckInMember(id)}
           notifications={notifications}
           onUpdateNotifications={setNotifications}
@@ -362,7 +424,7 @@ export default function App() {
 
           {activeTab === 'member-dashboard' && (
             <MemberDashboardView 
-              member={selectedMember}
+              member={selectedMember || members[0]}
               onUpdateMember={handleUpdateMember}
             />
           )}
@@ -381,7 +443,7 @@ export default function App() {
               onCheckInMember={(id) => handleCheckInMember(id)}
               onSendEmail={handleTriggerOutreach}
               liveOccupancy={liveOccupancy}
-              selectedMember={selectedMember}
+              selectedMember={selectedMember || members[0]}
               onSelectMember={setSelectedMember}
               userRole={userRole}
             />
@@ -682,7 +744,7 @@ export default function App() {
             <div className="pt-2">
               <MembersView 
                 members={members}
-                selectedMember={selectedMember}
+        selectedMember={selectedMember || members[0]}
                 onSelectMember={setSelectedMember}
                 onUpdateMember={handleUpdateMember}
                 userRole={userRole}
