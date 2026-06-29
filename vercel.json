@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://gym-management-gfpr.onrender.com/api/:path*"
+    }
+  ]
+}
