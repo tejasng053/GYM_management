@@ -1,21 +1,21 @@
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 
 const connectDB = async (): Promise<void> => {
-  let uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI;
   
   if (!uri) {
-    console.warn('⚠️ MONGODB_URI is not defined. Falling back to an in-memory MongoDB server for testing...');
-    const mongoServer = await MongoMemoryServer.create();
-    uri = mongoServer.getUri();
+    console.warn('⚠️ MONGODB_URI is not defined. Server will run without database — API routes will return errors.');
+    return;
   }
 
   try {
-    const conn = await mongoose.connect(uri);
-    console.log(`✅ MongoDB Connected: ${conn.connection.host} (In-Memory: ${!process.env.MONGODB_URI})`);
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000, // 10 second timeout instead of 30s default
+    });
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    console.warn('⚠️ Server will continue running without database. API routes may fail.');
   }
 };
 

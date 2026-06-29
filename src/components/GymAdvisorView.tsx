@@ -253,12 +253,12 @@ export default function GymAdvisorView({ members, trainers, finance }: GymAdviso
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between font-medium">
                   <span className="text-white/60">Coaches Staffing Ratio</span>
-                  <span className="text-emerald-400 font-bold font-mono">1:{Math.round(members.length / trainers.length)} Athletes</span>
+                  <span className="text-emerald-400 font-bold font-mono">1:{trainers.length > 0 ? Math.round(members.length / trainers.length) : 0} Athletes</span>
                 </div>
                 <div className="flex justify-between font-medium">
                   <span className="text-white/60">Average Stride Points</span>
                   <span className="text-white font-black font-mono">
-                    {Math.round(members.reduce((acc, m) => acc + (m.stridePoints || 0), 0) / members.length)} pts
+                    {members.length > 0 ? Math.round(members.reduce((acc, m) => acc + (m.stridePoints || 0), 0) / members.length) : 0} pts
                   </span>
                 </div>
                 <div className="flex justify-between font-medium">
